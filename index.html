@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Property Management</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f6fa;color:#172033}
+.app{max-width:540px;margin:auto;min-height:100vh;background:#f4f6fa}
+header{background:#1f4e79;color:#fff;padding:22px 18px;border-radius:0 0 22px 22px}
+header h1{margin:0 0 5px;font-size:24px}header p{margin:0;opacity:.85}
+nav{display:flex;background:#fff;position:sticky;top:0;z-index:3;border-bottom:1px solid #e5e8ee}
+nav button{flex:1;border-radius:0;background:#fff;color:#4a5568;padding:12px 4px;font-size:12px}
+nav button.active{color:#1f4e79;border-bottom:3px solid #1f4e79}
+main{padding:16px}.page{display:none}.page.active{display:block}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}.card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 9px #0000000a}
+.card small{color:#687386}.amount{font-size:20px;font-weight:700;margin-top:6px}
+.section{display:flex;justify-content:space-between;align-items:center;margin:20px 0 10px}.section h2{font-size:17px;margin:0}
+button{border:0;border-radius:10px;padding:10px 13px;background:#1f4e79;color:#fff;font-weight:600}
+.item{background:#fff;border-radius:14px;padding:14px;margin-bottom:10px;box-shadow:0 2px 9px #0000000a}
+.item h3{margin:0 0 5px;font-size:16px}.muted{color:#687386;font-size:13px}
+.row{display:flex;justify-content:space-between;gap:10px;margin-top:10px}
+.badge{display:inline-block;padding:5px 8px;border-radius:15px;font-size:11px;font-weight:bold}.paid{background:#e6f7ed;color:#18864b}.pending{background:#fff1df;color:#b56700}.due{background:#ffe5e5;color:#b42318}
+input,select{width:100%;padding:11px;margin:6px 0 10px;border:1px solid #d7dce5;border-radius:10px;font-size:14px;background:#fff}
+label{font-size:12px;color:#596579}.formgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.full{grid-column:1/-1}
+.modal{display:none;position:fixed;inset:0;background:#0007;align-items:flex-end;justify-content:center;z-index:10}.sheet{background:#fff;width:min(540px,100%);max-height:90vh;overflow:auto;padding:20px;border-radius:22px 22px 0 0}
+.actions{display:flex;gap:8px;margin-top:8px}.actions button{flex:1}.cancel{background:#e9edf3;color:#172033}
+.empty{background:#fff;padding:22px;text-align:center;border-radius:14px;color:#687386}
+.linkbtn{background:none;color:#1f4e79;padding:5px}
+</style>
+</head>
+<body>
+<div class="app">
+<header><h1>Property Management</h1><p>Properties, tenants & rent collection</p></header>
+<nav>
+<button class="active" onclick="showPage('dashboard',this)">Dashboard</button>
+<button onclick="showPage('properties',this)">Properties</button>
+<button onclick="showPage('tenants',this)">Tenants</button>
+<button onclick="showPage('history',this)">History</button>
+</nav>
+<main>
+<section id="dashboard" class="page active">
+<div class="cards">
+<div class="card"><small>Total received</small><div class="amount" id="totalReceived">₹0</div></div>
+<div class="card"><small>Total pending</small><div class="amount" id="totalPending">₹0</div></div>
+<div class="card"><small>This month received</small><div class="amount" id="monthReceived">₹0</div></div>
+<div class="card"><small>This month pending</small><div class="amount" id="monthPending">₹0</div></div>
+</div>
+<div class="section"><h2>Rent reminders</h2><button onclick="openPayment()">+ Payment</button></div>
+<div id="reminders"></div>
+</section>
+
+<section id="properties" class="page">
+<div class="section"><h2>Properties</h2><button onclick="openProperty()">+ Add Property</button></div>
+<div id="propertyList"></div>
+</section>
+
+<section id="tenants" class="page">
+<div class="section"><h2>Tenants</h2><button onclick="openTenant()">+ Add Tenant</button></div>
+<div id="tenantList"></div>
+</section>
+
+<section id="history" class="page">
+<div class="section"><h2>Rent History</h2></div>
+<div id="historyList"></div>
+</section>
+</main>
+</div>
+
+<div class="modal" id="propertyModal"><div class="sheet">
+<h2>Add Property</h2>
+<label>Property name / building</label><input id="pname" placeholder="e.g. Green Residency">
+<label>Flat / unit number</label><input id="punit" placeholder="e.g. Flat 402">
+<label>Address</label><input id="paddress" placeholder="Address">
+<div class="actions"><button class="cancel" onclick="closeModal('propertyModal')">Cancel</button><button onclick="saveProperty()">Save</button></div>
+</div></div>
+
+<div class="modal" id="tenantModal"><div class="sheet">
+<h2>Add Tenant</h2>
+<label>Tenant name</label><input id="tname" placeholder="Tenant name">
+<label>Mobile number</label><input id="tmobile" placeholder="Mobile number">
+<label>Property</label><select id="tproperty"></select>
+<div class="formgrid">
+<div><label>Monthly rent (₹)</label><input id="trent" type="number"></div>
+<div><label>Security deposit (₹)</label><input id="tdeposit" type="number"></div>
+<div><div><label>Tenure start</label><input id="tstart" type="date"></div></div>
+<div><div><label>Tenure end</label><input id="tend" type="date"></div></div>
+<div><div><label>Rent due day</label><input id="tdue" type="number" min="1" max="31" value="5"></div></div>
+<div><div><label>Increment % after 11 months</label><input id="tincrement" type="number" value="5"></div></div>
+</div>
+<p class="muted">The app calculates the next rent after every 11 months from the tenancy start date.</p>
+<div class="actions"><button class="cancel" onclick="closeModal('tenantModal')">Cancel</button><button onclick="saveTenant()">Save Tenant</button></div>
+</div></div>
+
+<div class="modal" id="paymentModal"><div class="sheet">
+<h2>Record Rent Payment</h2>
+<label>Tenant</label><select id="paytenant" onchange="suggestRent()"></select>
+<div class="formgrid">
+<div><label>Amount received (₹)</label><input id="payamount" type="number"></div>
+<div><label>Payment date</label><input id="paydate" type="date"></div>
+<div><label>Payment mode</label><select id="paymode"><option>UPI</option><option>Bank Transfer</option><option>Cash</option><option>Cheque</option><option>Other</option></select></div>
+<div><label>For rent month</label><input id="paymonth" type="month"></div>
+</div>
+<div class="actions"><button class="cancel" onclick="closeModal('paymentModal')">Cancel</button><button onclick="savePayment()">Save Payment</button></div>
+</div></div>
+
+<script>
+let properties=JSON.parse(localStorage.getItem('pm_properties')||'[]');
+let tenants=JSON.parse(localStorage.getItem('pm_tenants')||'[]');
+let payments=JSON.parse(localStorage.getItem('pm_payments')||'[]');
+
+const today=new Date(), iso=d=>{let x=new Date(d);return x.toISOString().slice(0,10)}, monthKey=d=>{let x=new Date(d);return x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')};
+function money(n){return '₹'+Number(n||0).toLocaleString('en-IN')}
+function save(){localStorage.setItem('pm_properties',JSON.stringify(properties));localStorage.setItem('pm_tenants',JSON.stringify(tenants));localStorage.setItem('pm_payments',JSON.stringify(payments))}
+function showPage(id,btn){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));btn.classList.add('active');render()}
+function openModal(id){document.getElementById(id).style.display='flex'}
+function closeModal(id){document.getElementById(id).style.display='none'}
+function openProperty(){openModal('propertyModal')}
+function openTenant(){fillPropertySelect();openModal('tenantModal')}
+function openPayment(){fillTenantSelect();document.getElementById('paydate').value=iso(today);document.getElementById('paymonth').value=monthKey(today);suggestRent();openModal('paymentModal')}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
+function saveProperty(){
+ let name=pname.value.trim(),unit=punit.value.trim();if(!name){alert('Enter property name.');return}
+ properties.push({id:Date.now(),name,unit,address:paddress.value.trim()});save();closeModal('propertyModal');render()
+}
+function fillPropertySelect(){tproperty.innerHTML=properties.map(p=>`<option value="${p.id}">${esc(p.name)}${p.unit?' - '+esc(p.unit):''}</option>`).join('');if(!properties.length)tproperty.innerHTML='<option value="">Add a property first</option>'}
+function saveTenant(){
+ if(!tname.value.trim()||!trent.value){alert('Enter tenant name and rent.');return}
+ if(!properties.length){alert('Please add a property first.');return}
+ tenants.push({id:Date.now(),name:tname.value.trim(),mobile:tmobile.value.trim(),propertyId:Number(tproperty.value),rent:Number(trent.value),deposit:Number(tdeposit.value||0),start:tstart.value||iso(today),end:tend.value||'',due:Number(tdue.value||5),increment:Number(tincrement.value||0)});
+ save();closeModal('tenantModal');render()
+}
+function fillTenantSelect(){paytenant.innerHTML=tenants.map(t=>`<option value="${t.id}">${esc(t.name)} — ${money(currentRent(t))}</option>`).join('');if(!tenants.length)paytenant.innerHTML='<option value="">No tenants</option>'}
+function currentRent(t,ref=today){
+ let start=new Date(t.start), r=t.rent, months=(ref.getFullYear()-start.getFullYear())*12+(ref.getMonth()-start.getMonth());
+ let cycles=Math.max(0,Math.floor(months/11));return Math.round(r*Math.pow(1+(t.increment||0)/100,cycles))
+}
+function nextIncrement(t){
+ let d=new Date(t.start);let cycles=Math.floor(((today.getFullYear()-d.getFullYear())*12+(today.getMonth()-d.getMonth()))/11)+1;
+ d.setMonth(d.getMonth()+cycles*11);return d
+}
+function expectedForMonth(t,m){
+ let d=new Date(m+'-01');return currentRent(t,d)
+}
+function savePayment(){
+ let tid=Number(paytenant.value), amount=Number(payamount.value), date=paydate.value, mon=paymonth.value;
+ if(!tid||!amount||!date||!mon){alert('Please complete payment details.');return}
+ payments.push({id:Date.now(),tenantId:tid,amount,date,mode:paymode.value,month:mon});save();closeModal('paymentModal');render()
+}
+function render(){
+ let cur=monthKey(today);
+ let totalExpected=tenants.reduce((s,t)=>s+expectedForMonth(t,cur),0);
+ let monthPaid=payments.filter(p=>p.month===cur).reduce((s,p)=>s+Number(p.amount),0);
+ let totalReceived=payments.reduce((s,p)=>s+Number(p.amount),0);
+ document.getElementById('totalReceived').textContent=money(totalReceived);
+ document.getElementById('totalPending').textContent=money(Math.max(0,totalExpected-monthPaid));
+ document.getElementById('monthReceived').textContent=money(monthPaid);
+ document.getElementById('monthPending').textContent=money(Math.max(0,totalExpected-monthPaid));
+ renderProperties();renderTenants();renderHistory();renderReminders()
+}
+function propName(id){let p=properties.find(x=>x.id===id);return p?p.name+(p.unit?' - '+p.unit:''):'Property'}
+function renderProperties(){
+ let el=propertyList;if(!properties.length){el.innerHTML='<div class="empty">No properties added.</div>';return}
+ el.innerHTML=properties.map(p=>`<div class="item"><h3>${esc(p.name)} ${p.unit?'· '+esc(p.unit):''}</h3><div class="muted">${esc(p.address||'No address added')}</div><div class="muted" style="margin-top:7px">${tenants.filter(t=>t.propertyId===p.id).length} tenant(s)</div></div>`).join('')
+}
+function renderTenants(){
+ let el=tenantList;if(!tenants.length){el.innerHTML='<div class="empty">No tenants added.</div>';return}
+ let cur=monthKey(today);
+ el.innerHTML=tenants.map(t=>{
+ let expected=expectedForMonth(t,cur),paid=payments.filter(p=>p.tenantId===t.id&&p.month===cur).reduce((s,p)=>s+Number(p.amount),0);
+ let status=paid>=expected?'paid':'pending';
+ let inc=nextIncrement(t);
+ return `<div class="item"><h3>${esc(t.name)}</h3><div class="muted">${esc(propName(t.propertyId))} · ${esc(t.mobile||'No mobile')}</div>
+ <div class="row"><span>Rent: <b>${money(currentRent(t))}</b></span><span>Deposit: ${money(t.deposit)}</span></div>
+ <div class="row"><span>Tenure: ${esc(t.start)} ${t.end?'to '+esc(t.end):''}</span><span class="badge ${status}">${status==='paid'?'PAID':'PENDING'}</span></div>
+ <div class="muted" style="margin-top:8px">Due: ${t.due}th · Next increment: ${iso(inc)}</div></div>`}).join('')
+}
+function renderHistory(){
+ let el=historyList;if(!payments.length){el.innerHTML='<div class="empty">No rent payments recorded yet.</div>';return}
+ let arr=[...payments].sort((a,b)=>new Date(b.date)-new Date(a.date));
+ el.innerHTML=arr.map(p=>{let t=tenants.find(x=>x.id===p.tenantId);return `<div class="item"><h3>${esc(t?t.name:'Tenant')}</h3><div class="row"><span>${p.month}</span><b>${money(p.amount)}</b></div><div class="muted">Payment date: ${esc(p.date)} · Mode: ${esc(p.mode)}</div></div>`}).join('')
+}
+function renderReminders(){
+ let cur=monthKey(today), el=reminders, rows=[];
+ tenants.forEach(t=>{let expected=expectedForMonth(t,cur),paid=payments.filter(p=>p.tenantId===t.id&&p.month===cur).reduce((s,p)=>s+Number(p.amount),0);if(paid<expected){let due=new Date(today.getFullYear(),today.getMonth(),t.due);let cls=due<today?'due':'pending';rows.push(`<div class="item"><h3>${esc(t.name)}</h3><div class="muted">${esc(propName(t.propertyId))} · Rent ${money(expected)}</div><div class="row"><span class="badge ${cls}">${due<today?'OVERDUE':'DUE '+t.due+'th'}</span><button onclick="quickPay(${t.id})">Record Payment</button></div></div>`)}})
+ el.innerHTML=rows.length?rows.join(''):'<div class="empty">🎉 No pending rent reminders for this month.</div>'
+}
+function quickPay(id){openPayment();paytenant.value=id;suggestRent()}
+function suggestRent(){let t=tenants.find(x=>x.id===Number(paytenant.value));if(t)payamount.value=currentRent(t)}
+render();
+</script>
+</body>
+</html>
