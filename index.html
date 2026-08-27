@@ -104,6 +104,84 @@ label{font-size:12px;color:#596579}.formgrid{display:grid;grid-template-columns:
 <div class="actions"><button class="cancel" onclick="closeModal('paymentModal')">Cancel</button><button onclick="savePayment()">Save Payment</button></div>
 </div></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ===== SUPABASE SETUP =====
+   Replace the two values below with your Supabase Project URL
+   and Publishable key from Project Settings -> API.
+   NEVER use the service-role/secret key here.
+*/
+const SUPABASE_URL = "pxixzmdlqictiuuxgdwy";
+const SUPABASE_KEY = "sb_publishable_Jq-4dj_ZIQXsFcByyGaFXQ_R3HOyIAv";
+let sb = null;
+let currentUser = null;
+
+function supabaseConfigured(){
+  return SUPABASE_URL.startsWith("http") &&
+         !SUPABASE_URL.includes("PASTE_") &&
+         !SUPABASE_KEY.includes("PASTE_");
+}
+
+async function startCloudApp(){
+  if(!supabaseConfigured()){
+    alert("Connect Supabase first: open this file, find SUPABASE_URL and SUPABASE_KEY, and paste your Project URL and Publishable key.");
+    return;
+  }
+  sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  const {data:{session}} = await sb.auth.getSession();
+  if(session){
+    currentUser=session.user;
+    await syncFromCloud();
+  } else {
+    showCloudLogin();
+  }
+  sb.auth.onAuthStateChange(async (_event, session)=>{
+    if(session){
+      currentUser=session.user;
+      await syncFromCloud();
+    }
+  });
+}
+
+function showCloudLogin(){
+  const email=prompt("Property Management login - Email:");
+  if(email===null)return;
+  const password=prompt("Password:");
+  if(password===null)return;
+  sb.auth.signInWithPassword({email:email.trim(),password}).then(async ({data,error})=>{
+    if(error){alert(error.message);return;}
+    currentUser=data.user;
+    await syncFromCloud();
+  });
+}
+
+async function syncFromCloud(){
+  const p=await sb.from("properties").select("*").order("created_at",{ascending:false});
+  const t=await sb.from("tenants").select("*").order("created_at",{ascending:false});
+  const pay=await sb.from("payments").select("*").order("payment_date",{ascending:false});
+  if(p.error||t.error||pay.error){
+    alert("Supabase database error: "+(p.error?.message||t.error?.message||pay.error?.message));
+    return;
+  }
+  /* The current app uses local arrays. Populate them from the cloud. */
+  if(typeof properties!=="undefined") properties=p.data||[];
+  if(typeof tenants!=="undefined") tenants=t.data||[];
+  if(typeof payments!=="undefined") payments=pay.data||[];
+  if(typeof render==="function") render();
+}
+
+/* Helpers for future CRUD actions in the UI. */
+async function cloudInsert(table,row){
+  if(!sb||!currentUser)throw new Error("Not signed in.");
+  row.user_id=currentUser.id;
+  const {data,error}=await sb.from(table).insert(row).select().single();
+  if(error)throw error;
+  return data;
+}
+async function cloudLogout(){
+  if(sb) await sb.auth.signOut();
+}
+</script>
 <script>
 let properties=JSON.parse(localStorage.getItem('pm_properties')||'[]');
 let tenants=JSON.parse(localStorage.getItem('pm_tenants')||'[]');
